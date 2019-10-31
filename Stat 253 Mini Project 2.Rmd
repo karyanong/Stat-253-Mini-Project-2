@@ -29,5 +29,6 @@ Note that the `echo = FALSE` parameter was added to the code chunk to prevent pr
 
 ```{r}
 buzzfeed <- read.csv("C:/Users/karya/Downloads/buzzfeed.csv")
+
 ```
 
