@@ -28,7 +28,18 @@ plot(pressure)
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
 ```{r}
-buzzfeed <- read.csv("C:/Users/karya/Downloads/buzzfeed.csv")
+buzzfeed <- readr::read_csv("C:/Users/karya/Downloads/buzzfeed.csv")
+names(buzzfeed) <- c("title", "text", "url","authors","source","type" )
+head(buzzfeed)
 
 ```
+```{r}
+library(tidytext)
+tidy_buzzfeed <- buzzfeed %>%
+  unnest_tokens(word, text)
+
+buzzfeed_sentiment <- tidy_buzzfeed %>%
+  inner_join(get_sentiments("bing")) 
+```
+
 
