@@ -32,6 +32,10 @@ head(buzzfeed)
 library(tidytext)
 library(dplyr)
 library(tidyr)
+library(ngram)
+
+buzzfeed%>%
+  mutate(title_length=wordcount(title))
 
 tidy_buzzfeed<- buzzfeed%>%
   unnest_tokens(word, text)
