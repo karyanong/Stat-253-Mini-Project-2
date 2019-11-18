@@ -19,9 +19,9 @@ output:
 ## Part 1: Process the data
 
 ```{r}
-library(readr)
-buzzfeed <- read_csv("Stat 253 Mini Project 2/Stat-253-Mini-Project-2/buzzfeed.csv")
-View(buzzfeed)
+
+buzzfeed <- read_csv("buzzfeed.csv")
+
 
 names(buzzfeed) <- c("title", "text", "url","authors","source","type" )
 head(buzzfeed)
@@ -31,13 +31,23 @@ head(buzzfeed)
 ```{r}
 library(tidytext)
 library(dplyr)
+library(tidyr)
 
 tidy_buzzfeed<- buzzfeed%>%
+  unnest_tokens(word, text)
+
+
+
+tidy_buzzfeed1<- buzzfeed%>%
   unnest_tokens(word, text)%>%
-  count(word, sort = TRUE)
+  mutate(word = str_extract(word, "[a-z']+")) 
+
+
 
 buzzfeed_sentiment <- tidy_buzzfeed %>%
-  inner_join(get_sentiments("bing")) 
+  inner_join(get_sentiments("bing")) %>%
+  inner_join(get_sentiments("nrc")) %>%
+  inner_join(get_sentiments("afinn")) 
 ```
 
 \
