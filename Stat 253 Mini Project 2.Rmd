@@ -19,39 +19,95 @@ output:
 ## Part 1: Process the data
 
 ```{r}
-
-buzzfeed <- read_csv("buzzfeed.csv")
-
-
-names(buzzfeed) <- c("title", "text", "url","authors","source","type" )
-head(buzzfeed)
-
-```
-
-```{r}
 library(tidytext)
 library(dplyr)
 library(tidyr)
 library(ngram)
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(caret)
+library(rpart)        # for building trees
+library(rpart.plot)   # for plotting trees
+library(class)        # for the instructor's plotting functions
+library(randomForest) # for bagging & forests
+library(infer)        # for resampling
+library(stringr)
+library(purrr)
+library(readr)
+library(stringr)
+library(tidytext)
+library(tidyr)
+library(textdata)
+library(syuzhet)
+library(ngram)
 
-buzzfeed%>%
-  mutate(title_length=wordcount(title))
+buzzfeed <- readr::read_csv("buzzfeed.csv")
+names(buzzfeed) <- c("title", "text", "url","authors","source","type" )
 
-tidy_buzzfeed<- buzzfeed%>%
-  unnest_tokens(word, text)
-
-
-
-tidy_buzzfeed1<- buzzfeed%>%
-  unnest_tokens(word, text)%>%
-  mutate(word = str_extract(word, "[a-z']+")) 
+buzzfeed<-buzzfeed%>%
+  mutate(id = 1:n())
 
 
+```
 
-buzzfeed_sentiment <- tidy_buzzfeed %>%
-  inner_join(get_sentiments("bing")) %>%
-  inner_join(get_sentiments("nrc")) %>%
-  inner_join(get_sentiments("afinn")) 
+```{r}
+##for analysis of text
+text_buzzfeed<-buzzfeed%>%
+  unnest_tokens(word,text)%>%
+    filter(!word %in% stop_words$word,
+         !word %in% str_remove_all(stop_words$word, "'"),
+         str_detect(word, "[a-z]"))
+
+
+word_count<- text_buzzfeed %>%
+  count(id,word, sort = TRUE)%>%
+  ungroup()
+
+word_count1<-word_count%>%
+  group_by(id)%>%
+  summarize(words_in_text=sum(n))
+
+
+buzzfeed_sentiment_text<-word_count%>%
+  inner_join(get_sentiments("afinn"))%>%
+  group_by(id)%>%
+  summarize(afinnscore_text = mean(value))
+
+exclamation_buzzfeed<-buzzfeed%>%
+  unnest_tokens(word,text)
+
+```
+
+
+
+```{r}
+###joining up data
+buzzfeed<-buzzfeed%>%
+  left_join(buzzfeed_sentiment_text)%>%
+
+  left_join(word_count1)
+
+buzzfeed<-buzzfeed%>%
+  mutate(text_char= as.character(text),
+         title_char= as.character(title),
+         authors_char= as.character(authors),
+         title_length = nchar(title_char),
+          title_words = sapply(strsplit(title, " "), length),
+          authors_length = nchar(authors_char),
+        authors_number=str_count(authors,','),
+        capitalized_count_title = str_count(title, "[A-Z]"),
+        capitalized_count_text=str_count(text, "[A-Z]"),
+        num_exclamations_title=str_count(title, "!"),
+        num_exclamations_text=str_count(text, "!"),
+        num_punctuations_title=str_count(title,'[[:punct:]]'),
+        num_punctuations_text=str_count(text,'[[:punct:]]'),
+        url_type = str_detect(url, paste(c(".ws",".net",".co ",".it"), collapse = "|")),
+        fake_news_source=str_detect(source, paste(c("freedomdaily","eaglerising","addictinginfo ","occupydemocrats","rightwingnews"), collapse = "|")))
+
+buzzfeed_real<-buzzfeed%>%
+  select(-title,-text,-url,-authors,-source,-id,-text_char,-title_char,-authors_char,)
+
 ```
 
 \
@@ -64,6 +120,93 @@ buzzfeed_sentiment <- tidy_buzzfeed %>%
 
 
 ## Part 2: Analyze
+```{r}
+set.seed(253)
+tree_model <- train(
+  type ~ .,
+  data = buzzfeed_real,
+  method = "rpart",
+  tuneGrid = data.frame(cp = seq(0, 1, length = 30)),
+  trControl = trainControl(method = "cv", number = 10, selectionFunction = "best"),
+  metric = "Accuracy",
+  na.action = na.omit
+)
+
+# b 
+plot(tree_model)
+```
+
+```{r}
+rpart.plot(tree_model$finalModel)
+
+```
+```{r}
+tree_model$results %>% 
+  filter(cp == tree_model$bestTune$cp)
+tree_model$resample %>% 
+  summarize(mean(Accuracy))
+
+```
+
+
+
+
+```{r}
+tree_model$finalModel$variable.importance
+tree_model$results %>% 
+  filter(cp == tree_model$bestTune$cp)
+```
+```{r}
+    # Set the seed
+    set.seed(253)
+    
+    
+    
+forest_model <- train(
+  type ~ .,
+  data = buzzfeed_real,
+  method = "rf",
+  tuneGrid = data.frame(mtry=c(1:14)),
+  trControl = trainControl(method = "oob"),
+  metric = "Accuracy",
+  na.action = na.omit
+)
+```
+
+
+
+```{r}
+plot(forest_model)
+```
+
+```{r}
+forest_model$finalModel
+```
+
+```{r}
+set.seed(253)
+knn_model_big <- train(
+  type ~ .,
+  data = buzzfeed_real,
+  preProcess = c("center","scale"),
+  method = "knn",
+  tuneGrid = data.frame(k = c(1:30)),
+  trControl = trainControl(method = "cv", number = 10, selectionFunction = "best"),
+  metric = "Accuracy",
+  na.action = na.omit)
+```
+
+```{r}
+knn_model_big$bestTune
+plot(knn_model_big)
+```
+```{r}
+knn_model_big$results%>%
+  filter(k==knn_model_big$bestTune$k)
+```
+
+
+
 
 
 \
