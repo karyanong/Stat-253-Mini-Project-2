@@ -103,7 +103,8 @@ buzzfeed<-buzzfeed%>%
         num_punctuations_title=str_count(title,'[[:punct:]]'),
         num_punctuations_text=str_count(text,'[[:punct:]]'),
         url_type = str_detect(url, paste(c(".ws",".net",".co ",".it"), collapse = "|")),
-        fake_news_source=str_detect(source, paste(c("freedomdaily","eaglerising","addictinginfo ","occupydemocrats","rightwingnews"), collapse = "|")))
+        fake_news_source=str_detect(source, paste(c("freedomdaily","eaglerising","addictinginfo ","occupydemocrats","rightwingnews"), collapse = "|")),
+contains_share=str_detect(text, paste(c("SHARE","share"), collapse = "|")))
 
 buzzfeed_real<-buzzfeed%>%
   select(-title,-text,-url,-authors,-source,-id,-text_char,-title_char,-authors_char,)
